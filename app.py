@@ -3,6 +3,7 @@ from kerykeion import AstrologicalSubject
 import random
 import datetime
 import requests
+import json
 
 # -----------------------------------
 # CONFIGURACIÓN DE LA PÁGINA
@@ -206,30 +207,13 @@ with tab2:
 with tab3:
     st.header("Lectura de Arcanos Mayores")
     
-    arcanos = [
-        {"n": "0. El Loco", "d": "Nuevos comienzos, aventura, salto de fe.", "i": "Imprudencia, riesgos innecesarios."},
-        {"n": "I. El Mago", "d": "Manifestación, poder personal, recursos.", "i": "Manipulación, talentos ocultos."},
-        {"n": "II. La Sacerdotisa", "d": "Intuición, misterio, voz interior.", "i": "Secretos, desconexión intuitiva."},
-        {"n": "III. La Emperatriz", "d": "Abundancia, fertilidad, naturaleza.", "i": "Dependencia, bloqueo creativo."},
-        {"n": "IV. El Emperador", "d": "Estructura, autoridad, estabilidad.", "i": "Tiranía, rigidez."},
-        {"n": "V. El Hierofante", "d": "Tradición, creencias, educación.", "i": "Rebelión, creencias restrictivas."},
-        {"n": "VI. Los Enamorados", "d": "Amor, elecciones, armonía.", "i": "Desequilibrio, malas decisiones."},
-        {"n": "VII. El Carro", "d": "Fuerza de voluntad, éxito, control.", "i": "Falta de dirección, obstáculos."},
-        {"n": "VIII. La Fuerza", "d": "Coraje, compasión, control interno.", "i": "Inseguridad, duda de uno mismo."},
-        {"n": "IX. El Ermitaño", "d": "Introspección, soledad, guía interna.", "i": "Aislamiento, rechazo al mundo."},
-        {"n": "X. Rueda de la Fortuna", "d": "Ciclos, destino, suerte.", "i": "Resistencia al cambio."},
-        {"n": "XI. La Justicia", "d": "Verdad, ley, causa y efecto.", "i": "Deshonestidad, injusticia."},
-        {"n": "XII. El Colgado", "d": "Pausa, nuevas perspectivas, soltar.", "i": "Estancamiento, indecisión."},
-        {"n": "XIII. La Muerte", "d": "Finales, transformación, liberación.", "i": "Miedo al cambio, aferrarse al pasado."},
-        {"n": "XIV. La Templanza", "d": "Equilibrio, moderación, propósito.", "i": "Excesos, desequilibrio."},
-        {"n": "XV. El Diablo", "d": "Sombra, apegos, materialismo.", "i": "Liberación, desapego."},
-        {"n": "XVI. La Torre", "d": "Cambio repentino, caos, despertar.", "i": "Miedo al sufrimiento."},
-        {"n": "XVII. La Estrella", "d": "Esperanza, fe, renovación.", "i": "Desesperación, desconexión."},
-        {"n": "XVIII. La Luna", "d": "Ilusiones, miedos, subconsciente.", "i": "Miedos revelados, claridad."},
-        {"n": "XIX. El Sol", "d": "Éxito, vitalidad, alegría.", "i": "Pesimismo, falta de claridad."},
-        {"n": "XX. El Juicio", "d": "Renacimiento, llamado interior.", "i": "Dudas, ignorar el llamado."},
-        {"n": "XXI. El Mundo", "d": "Finalización, integración, logros.", "i": "Estancamiento, falta de cierre."}
-    ]
+    # Cargar base de datos externa JSON
+    try:
+        with open('tarot_data.json', 'r', encoding='utf-8') as file:
+            arcanos = json.load(file)
+    except FileNotFoundError:
+        st.error("No se encontró el archivo 'tarot_data.json'. Por favor asegúrate de haberlo creado en la misma carpeta.")
+        arcanos = [] # Evita que la app se rompa si falta el archivo
 
     layouts = {
         "1 Carta (El Mensaje del Día)": ["Mensaje Central"],
@@ -239,7 +223,8 @@ with tab3:
 
     tipo_tirada = st.selectbox("Selecciona tu tirada:", list(layouts.keys()))
     
-    if st.button("Mezclar y Tirar las Cartas 🔮"):
+    # Solo permite tirar las cartas si el JSON cargó correctamente
+    if st.button("Mezclar y Tirar las Cartas 🔮") and arcanos:
         posiciones = layouts[tipo_tirada]
         num_cartas = len(posiciones)
         
@@ -250,10 +235,22 @@ with tab3:
             carta = cartas_sacadas[i]
             invertida = random.random() < 0.2
             estado = "↓ Invertida" if invertida else "↑ Al derecho"
-            significado = carta["i"] if invertida else carta["d"]
+            
+            # Selecciona el significado según la orientación de la carta
+            significado = carta['significado_invertido'] if invertida else carta['significado_derecho']
             
             with col:
                 st.markdown(f"**{posiciones[i].upper()}**")
-                st.markdown(f"### {carta['n']}")
+                st.markdown(f"### {carta.get('numero_romano', '')}. {carta.get('nombre', '')}")
                 st.markdown(f"*{estado}*")
+                
+                # Arquetipo
+                st.caption(f"**Arquetipo:** {carta.get('arquetipo', '')}")
+                
+                # Significado principal
                 st.info(significado)
+                
+                # Expander para no saturar la pantalla con tanto texto
+                with st.expander("Mensaje y Apuntes"):
+                    st.write(f"**Consejo:** {carta.get('mensaje_consejo', '')}")
+                    st.write(f"**Notas R.H. Wilson:** {carta.get('apunte_wilson', '')}")
